@@ -1,7 +1,13 @@
 package com.example.googleembededstreetview;
 
+import android.content.Intent;
+import android.media.Image;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -50,6 +56,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             }
         });
+        FloatingActionButton startStreetView = (FloatingActionButton)   findViewById(R.id.floatingActionButton);
+        startStreetView.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent intent = new Intent(getApplicationContext(), StreetView.class);
+                intent.putExtra("LatLng",marker.getPosition());
+                startActivity(intent);
+
+            }
+        });
+
+
         // Add a markerOptions in Sydney and move the camera
 
 
