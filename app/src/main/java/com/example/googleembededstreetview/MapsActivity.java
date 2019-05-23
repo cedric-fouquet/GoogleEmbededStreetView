@@ -1,13 +1,11 @@
 package com.example.googleembededstreetview;
 
 import android.content.Intent;
-import android.media.Image;
+import android.graphics.Color;
+import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
-import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -16,11 +14,31 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.maps.DirectionsApi;
+import com.google.maps.DirectionsApiRequest;
+import com.google.maps.GaeRequestHandler;
+import com.google.maps.GeoApiContext;
+import com.google.maps.GeocodingApi;
+import com.google.maps.RoadsApi;
+import com.google.maps.errors.ApiException;
+import com.google.maps.model.DirectionsResult;
+import com.google.maps.model.DirectionsRoute;
+import com.google.maps.model.GeocodingResult;
+
+import java.io.IOException;
+import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     private Marker marker;
+    private  Gson gson = new Gson();
+    private GeoApiContext geoApiContext;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,7 +61,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
      */
     @Override
     public void onMapReady(GoogleMap googleMap) {
+
         mMap = googleMap;
+        geoApiContext = new GeoApiContext.Builder().apiKey("AIzaSyCFyFd-LGtWjzOXCIL2GU4rEkwDZR6GQeA").build();
+
+
         LatLng markerPos = new LatLng(-34, 151);
         final MarkerOptions markerOptions = new MarkerOptions().position(markerPos);
         marker = mMap.addMarker(markerOptions);
@@ -51,6 +73,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onMapClick(LatLng latLng) {
                 marker.remove();
+                try {
+                    RetrieveRoadPointTask asyncTask = (RetrieveRoadPointTask) new RetrieveRoadPointTask(new AsyncResponse(){
+
+                        RoadsSnappedPoint roadsSnappedPoint = new RoadsSnappedPoint();
+                        @Override
+                        public void processFinish(String output){
+
+                            roadsSnappedPoint = gson.fromJson(output,RoadsSnappedPoint.class);
+                            if (roadsSnappedPoint.snappedPoints != null) {
+                                SnappedPoint Point = roadsSnappedPoint.snappedPoints[0];
+                                try{
+                                    marker.remove();
+                                    marker = mMap.addMarker(new MarkerOptions().position(Point.getLatLng()));
+
+                                }
+                                catch (Exception e)
+                                {
+
+                                }
+                            }
+                            else{
+                                marker.remove();
+                            }
+
+                        }
+
+
+                    }).execute(latLng);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
                 markerOptions.position(latLng);
                 marker = mMap.addMarker(markerOptions);
                 mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -67,9 +122,34 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
 
 
-        // Add a markerOptions in Sydney and move the camera
-
-
-
     }
+
+    Polyline drawDirection(LatLng origin, LatLng destination)
+    {
+
+        DirectionsApiRequest directionApi = new DirectionsApiRequest(geoApiContext);
+
+
+        directionApi.origin(new com.google.maps.model.LatLng(origin.latitude,origin.longitude) );
+        directionApi.destination(new com.google.maps.model.LatLng(destination.latitude,destination.longitude));
+
+        DirectionsResult results= new DirectionsResult();
+        try {
+            results = directionApi.await();
+        } catch (ApiException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<com.google.maps.model.LatLng> pointList =  results.routes[0].overviewPolyline.decodePath();
+        PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
+        for (int z = 0; z < pointList.size(); z++) {
+            com.google.maps.model.LatLng point = pointList.get(z);
+            options.add(new LatLng( point.lat,point.lng));
+        }
+        return mMap.addPolyline(options);
+    }
+
 }

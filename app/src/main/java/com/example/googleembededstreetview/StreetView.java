@@ -14,47 +14,13 @@ import com.google.android.gms.maps.OnStreetViewPanoramaReadyCallback;
 import com.google.android.gms.maps.StreetViewPanorama;
 import com.google.android.gms.maps.StreetViewPanoramaFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.StreetViewPanoramaCamera;
 
 public class StreetView extends FragmentActivity
-        implements OnStreetViewPanoramaReadyCallback , SensorEventListener {
+        implements OnStreetViewPanoramaReadyCallback  {
 
     StreetViewPanoramaFragment streetViewPanoramaFragment;
     LatLng Position;
-
-
-    private SensorManager sensorManager;
-    private Sensor sensor;
-
-    private float[] mGravity;
-    private float[] mMagnetic;
-
-    private float getDirection()
-    {
-
-        float[] temp = new float[9];
-        float[] R = new float[9];
-        //Load rotation matrix into R
-        SensorManager.getRotationMatrix(temp, null,
-                mGravity, mMagnetic);
-
-        //Remap to camera's point-of-view
-        SensorManager.remapCoordinateSystem(temp,
-                SensorManager.AXIS_X,
-                SensorManager.AXIS_Z, R);
-
-        //Return the orientation values
-        float[] values = new float[3];
-        SensorManager.getOrientation(R, values);
-
-        //Convert to degrees
-        for (int i=0; i < values.length; i++) {
-            Double degrees = (values[i] * 180) / Math.PI;
-            values[i] = degrees.floatValue();
-        }
-
-        return values[0];
-
-    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -63,13 +29,9 @@ public class StreetView extends FragmentActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_street_view);
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-
         Intent intent = getIntent();
         Position = intent.getExtras().getParcelable("LatLng");
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
         streetViewPanoramaFragment =
                 (StreetViewPanoramaFragment) getFragmentManager()
@@ -81,29 +43,18 @@ public class StreetView extends FragmentActivity
     @Override
     public void onStreetViewPanoramaReady(StreetViewPanorama streetViewPanorama) {
         streetViewPanorama.setPosition(Position);
-
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        switch(event.sensor.getType()) {
-
-            case Sensor.TYPE_ACCELEROMETER:
-                mGravity = event.values.clone();
-                break;
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                mMagnetic = event.values.clone();
-                break;
-            default:
-                return;
+        try {
+            //Change angle of street view
+            final int DURATION = 1000;
+            StreetViewPanoramaCamera camera = new StreetViewPanoramaCamera.Builder()
+                    .zoom(streetViewPanorama.getPanoramaCamera().zoom)
+                    .tilt(streetViewPanorama.getPanoramaCamera().tilt)
+                    .bearing(streetViewPanorama.getPanoramaCamera().bearing ) // angle value by Maps Api
+                    .build();
+            streetViewPanorama.animateTo(camera, DURATION);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        if(mGravity != null && mMagnetic != null) {
-            getDirection();
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
     }
 }
+
