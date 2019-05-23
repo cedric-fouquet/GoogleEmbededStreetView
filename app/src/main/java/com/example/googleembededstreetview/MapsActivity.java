@@ -3,6 +3,8 @@ package com.example.googleembededstreetview;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.view.View;
@@ -11,6 +13,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -29,15 +32,21 @@ import com.google.maps.model.DirectionsResult;
 import com.google.maps.model.DirectionsRoute;
 import com.google.maps.model.GeocodingResult;
 
+import org.parceler.Parcels;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
-    private Marker marker;
+    private Marker markerOrigin;
+    private Marker markerDestination;
+    private boolean PutMarkerOrigin = true;
     private  Gson gson = new Gson();
     private GeoApiContext geoApiContext;
+    private Polyline road;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,11 +77,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         LatLng markerPos = new LatLng(-34, 151);
         final MarkerOptions markerOptions = new MarkerOptions().position(markerPos);
-        marker = mMap.addMarker(markerOptions);
+        markerOrigin = mMap.addMarker(markerOptions);
+        markerDestination = mMap.addMarker(markerOptions);
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                marker.remove();
                 try {
                     RetrieveRoadPointTask asyncTask = (RetrieveRoadPointTask) new RetrieveRoadPointTask(new AsyncResponse(){
 
@@ -84,19 +93,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             if (roadsSnappedPoint.snappedPoints != null) {
                                 SnappedPoint Point = roadsSnappedPoint.snappedPoints[0];
                                 try{
-                                    marker.remove();
-                                    marker = mMap.addMarker(new MarkerOptions().position(Point.getLatLng()));
+                                    if(PutMarkerOrigin)
+                                    {
+                                        markerOrigin.remove();
+                                       markerOrigin =  mMap.addMarker(new MarkerOptions().position(Point.getLatLng()).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
 
+                                       PutMarkerOrigin = !PutMarkerOrigin;
+                                    }
+                                    else{
+                                        markerDestination.remove();
+                                        markerDestination =  mMap.addMarker(new MarkerOptions().position(Point.getLatLng()).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+                                        PutMarkerOrigin = !PutMarkerOrigin;
+                                        try {
+                                            if( road != null)
+                                            {
+                                                road.remove();
+                                            }
+                                            road = drawDirection(markerOrigin.getPosition(),markerDestination.getPosition());
+                                        } catch (ApiException e) {
+                                            e.printStackTrace();
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+
+                                    }
+                                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
                                 }
                                 catch (Exception e)
                                 {
 
                                 }
                             }
-                            else{
-                                marker.remove();
-                            }
-
                         }
 
 
@@ -106,17 +135,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     e.printStackTrace();
                 }
 
-                markerOptions.position(latLng);
-                marker = mMap.addMarker(markerOptions);
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             }
         });
         FloatingActionButton startStreetView = (FloatingActionButton)   findViewById(R.id.floatingActionButton);
         startStreetView.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 Intent intent = new Intent(getApplicationContext(), StreetView.class);
-                intent.putExtra("LatLng",marker.getPosition());
+                ArrayList<ParcelableLatlng> parcelableList = new ArrayList<ParcelableLatlng>();
+                for(LatLng point : road.getPoints())
+                {
+                    parcelableList.add(new ParcelableLatlng(point.latitude,point.longitude));
+                }
+
+                Parcelable listParcelable = Parcels.wrap(parcelableList);
+                Bundle bundle = new Bundle();
+                bundle.putParcelable("PointList",listParcelable);
+                intent.putExtra("bundle",bundle);
                 startActivity(intent);
+
+
 
             }
         });
@@ -124,8 +161,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
-    Polyline drawDirection(LatLng origin, LatLng destination)
-    {
+
+    Polyline drawDirection(LatLng origin, LatLng destination) throws ApiException, InterruptedException, IOException {
 
         DirectionsApiRequest directionApi = new DirectionsApiRequest(geoApiContext);
 
@@ -137,11 +174,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         try {
             results = directionApi.await();
         } catch (ApiException e) {
-            e.printStackTrace();
+            throw e;
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            throw e;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw e;
         }
         List<com.google.maps.model.LatLng> pointList =  results.routes[0].overviewPolyline.decodePath();
         PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);

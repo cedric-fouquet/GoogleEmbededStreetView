@@ -36,6 +36,8 @@ dependencies {
     implementation 'com.google.android.gms:play-services-location:16.0.0';
     implementation 'com.google.guava:guava:11.0.2'
     implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'org.parceler:parceler-api:1.1.12'
+    annotationProcessor 'org.parceler:parceler:1.1.12'
     // Required for all Google VR apps
     implementation 'com.google.vr:sdk-base:1.190.0'
 
