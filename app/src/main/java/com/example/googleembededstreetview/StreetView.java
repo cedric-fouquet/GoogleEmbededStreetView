@@ -66,7 +66,9 @@ public class StreetView extends FragmentActivity
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                ViewIndex += 1;
+                if(ViewIndex < pointList.size()-1) {
+                    ViewIndex += 1;
+                }
                 setNewCameraPosition(streetViewPanorama);
             }
         },0,10000);
@@ -77,7 +79,7 @@ public class StreetView extends FragmentActivity
         runOnUiThread(() -> {
             streetViewPanorama.setPosition(pointList.get(ViewIndex));
             //Change angle of street view
-            final int DURATION = 1000;
+            final int DURATION = 10000;
             StreetViewPanoramaCamera camera = new StreetViewPanoramaCamera.Builder()
                     .zoom(streetViewPanorama.getPanoramaCamera().zoom)
                     .tilt(streetViewPanorama.getPanoramaCamera().tilt)
