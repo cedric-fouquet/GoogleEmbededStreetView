@@ -180,11 +180,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (IOException e) {
             throw e;
         }
-        List<com.google.maps.model.LatLng> pointList =  results.routes[0].overviewPolyline.decodePath();
+        List<com.google.maps.model.LatLng> pointList = results.routes[0].overviewPolyline.decodePath();
         PolylineOptions options = new PolylineOptions().width(5).color(Color.BLUE).geodesic(true);
-        for (int z = 0; z < pointList.size(); z++) {
-            com.google.maps.model.LatLng point = pointList.get(z);
-            options.add(new LatLng( point.lat,point.lng));
+        com.google.maps.model.LatLng point = pointList.get(0);
+        options.add(new LatLng( point.lat,point.lng));
+        for (int z = 1; z < pointList.size(); z++) {
+            point = pointList.get(z);
+            com.google.maps.model.LatLng prevpoint = pointList.get(z-1);
+            double lat = point.lat-prevpoint.lat;
+            double lng = point.lng-prevpoint.lng;
+            for (int i = 0; i < 4; i++) {
+                options.add(new LatLng(prevpoint.lat+(i*lat/4.0),prevpoint.lng+(i*lng/4.0)));
+            }
+            options.add(new LatLng(point.lat,point.lng));
         }
         return mMap.addPolyline(options);
     }
