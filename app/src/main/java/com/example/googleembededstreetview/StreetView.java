@@ -60,22 +60,22 @@ public class StreetView extends FragmentActivity
 
     }
 
-    @Override
+@Override
     public void onStreetViewPanoramaReady(StreetViewPanorama streetViewPanorama) {
         setNewCameraPosition(streetViewPanorama);
+        streetViewPanorama.setStreetNamesEnabled(false);
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
                 if(ViewIndex < pointList.size()-1) {
                     ViewIndex += 1;
+                    setNewCameraPosition(streetViewPanorama);
                 }
-                setNewCameraPosition(streetViewPanorama);
             }
-        },0,10000);
-
+        },0,3333);
     }
+    
     public void setNewCameraPosition(StreetViewPanorama streetViewPanorama) {
-
         runOnUiThread(() -> {
             streetViewPanorama.setPosition(pointList.get(ViewIndex));
             //Change angle of street view
